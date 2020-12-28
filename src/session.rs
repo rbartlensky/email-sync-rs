@@ -9,30 +9,31 @@ pub struct Session {
 
 impl Session {
     /// Connects to a testing IMAP server on 127.0.0.1:3993.
-    pub fn new() -> Result<Self, anyhow::Error> {
-        let session = Session::connect()?;
+    pub fn new(domain: Option<&str>) -> Result<Self, anyhow::Error> {
+        let session = Session::connect(domain)?;
         Ok(Self { session })
     }
 
-    fn connect() -> Result<ImapSession, anyhow::Error> {
-        let domain = "imap.example.com";
-        let tls = native_tls::TlsConnector::builder()
-            .danger_accept_invalid_certs(true)
-            .danger_accept_invalid_hostnames(true)
-            .build()
-            .unwrap();
-        // let tls = native_tls::TlsConnector::builder()
-        //     .build()
-        //     .context("Failed to create TLS connector.")?;
-        let client = imap::connect(("127.0.0.1", 3993), domain, &tls)
-            .with_context(|| format!("IMAP: Failed to connect to {}:{}.", domain, 993))?;
-        let mut session = client
+    fn connect(domain: Option<&str>) -> Result<ImapSession, anyhow::Error> {
+        let (tls, domain, name) = if let Some(domain) = domain {
+            let tls = native_tls::TlsConnector::builder()
+                .build()
+                .context("Failed to create TLS connector.")?;
+            (tls, domain, domain)
+        } else {
+            let tls = native_tls::TlsConnector::builder()
+                .danger_accept_invalid_certs(true)
+                .danger_accept_invalid_hostnames(true)
+                .build()
+                .unwrap();
+            (tls, "127.0.0.1", "imap.example.com")
+        };
+        let client = imap::connect((domain, 3993), name, &tls)
+            .with_context(|| format!("IMAP: Failed to connect to {}:{}.", domain, 3993))?;
+        let session = client
             .login("inbox@localhost", "")
             .map_err(|e| e.0)
             .context("Failed to login.")?;
-        session
-            .select("INBOX")
-            .context("No such folder named INBOX.")?;
         Ok(session)
     }
 

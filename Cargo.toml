@@ -16,3 +16,6 @@ native-tls = "0.2.6"
 
 # for storing email
 maildir = "0.4.3"
+
+# for cli
+pico-args = "0.3.4"
