@@ -1,0 +1,18 @@
+[package]
+name = "email-sync"
+version = "0.1.0"
+authors = ["Robert Bartlensky <bartlensky.robert@gmail.com>"]
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+# error handling
+anyhow = "1.0.34"
+
+# for the imap client
+imap = "2.3.0"
+native-tls = "0.2.6"
+
+# for storing email
+maildir = "0.4.3"
