@@ -1,7 +1,10 @@
-use crate::Session;
+use crate::{
+    utils::{concat, convert_to_u32, convert_to_u8},
+    Session,
+};
 
 use std::{
-    fs::{read_to_string, write},
+    fs::{read, write},
     path::{Path, PathBuf},
 };
 
@@ -28,7 +31,11 @@ impl<'s> Mailbox<'s> {
             .context("Server doesn't support UIDVALIDITY.")?;
         if let Some(suid) = saved_uid.uid_validity {
             if suid != uid_validity {
-                unimplemented!("UIDVALIDITY for mailbox changed.");
+                unimplemented!(
+                    "UIDVALIDITY for mailbox changed. Expected: {}, found: {}.",
+                    suid,
+                    uid_validity
+                );
             }
         }
         Ok(Mailbox {
@@ -55,9 +62,13 @@ impl<'s> Mailbox<'s> {
             // we don't store any flags for now
             .store_cur_with_flags(message.body().unwrap(), "")
             .unwrap();
+
+        // update our last_uid value
+        let uid_validity = convert_to_u8(self.uid_validity);
+        let last_uid = convert_to_u8(uid);
         write(
             self.maildir.path().join("last_uid"),
-            format!("{},{}", self.uid_validity, uid),
+            concat(uid_validity, last_uid),
         )
         .context("Failed to write.")?;
         Ok(())
@@ -106,8 +117,10 @@ struct SavedUid {
 /// Checks if we saved any information about `uid_validity` and `last_uid`
 /// into the local maildir.
 fn saved_uid(maildir_path: &Path) -> anyhow::Result<SavedUid> {
+    use std::convert::TryInto;
+
     let path = maildir_path.join("last_uid");
-    let saved_uid = match read_to_string(&path) {
+    let saved_uid = match read(&path) {
         Ok(s) => s,
         Err(e) if e.kind() == std::io::ErrorKind::NotFound => return Ok(Default::default()),
         e => e.with_context(|| format!("Failed to read from {}", path.display(),))?,
@@ -117,27 +130,16 @@ fn saved_uid(maildir_path: &Path) -> anyhow::Result<SavedUid> {
         // this is our first time backing things up
         Ok(Default::default())
     } else {
-        let split = saved_uid.split(',').collect::<Vec<&str>>();
-        if split.len() != 2 {
+        if saved_uid.len() != 8 {
             return Err(anyhow!(
-                "Contents of {} are not valid. Expected '<number>,<number>', got: {}",
+                "Contents of {} are not valid. Expected size to be 8 bytes, got: {} ",
                 path.display(),
-                saved_uid
+                saved_uid.len(),
             ));
         }
-        let mut uids = [0; 2];
-        for (i, s) in split.iter().enumerate() {
-            uids[i] = s.parse::<u32>().with_context(|| {
-                format!(
-                    "Contents of {} are not valid. Expected a number, got: {}",
-                    path.display(),
-                    s
-                )
-            })?;
-        }
         Ok(SavedUid {
-            uid_validity: Some(uids[0]),
-            last_uid: Some(uids[1]),
+            uid_validity: Some(convert_to_u32(saved_uid[0..4].try_into().unwrap())),
+            last_uid: Some(convert_to_u32(saved_uid[4..8].try_into().unwrap())),
         })
     }
 }
