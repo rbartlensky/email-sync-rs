@@ -1,3 +1,4 @@
+use anyhow::Context;
 use email_sync::{Mailbox, Session};
 
 const VERSION: &'static str = env!("CARGO_PKG_VERSION");
@@ -9,10 +10,11 @@ macro_rules! HELP_STR {
 Make a local copy of your email in a maildir directory.
 
 USAGE:
-    {argv0} [--domain <DOMAIN>]
+    {argv0} --domain <DOMAIN> --username <USERNAME>
 
 OPTIONS:
-    --domain                The domain name of the IMAP server
+    -d, --domain            The domain name of the IMAP server
+    -u, --username          The username to authenticate as
     -v, --version           Print version info and exit
     -h, --help              Print help information
 "#
@@ -29,14 +31,19 @@ fn main() -> anyhow::Result<()> {
         println!("{} {}", std::env::args().nth(0).unwrap(), VERSION);
         return Ok(());
     }
-    let domain: Option<String> = args.opt_value_from_str("--domain")?;
+    let domain: String = args
+        .opt_value_from_str(["-d", "--domain"])?
+        .context("Missing argument `--domain`.")?;
+    let username: String = args
+        .opt_value_from_str(["-u", "--username"])?
+        .context("Missing argument `--username`.")?;
 
-    sync_email(domain.as_deref())?;
+    sync_email(domain, username)?;
     Ok(())
 }
 
-fn sync_email(domain: Option<&str>) -> anyhow::Result<()> {
-    let mut session = Session::new(domain.as_deref())?;
+fn sync_email(domain: String, username: String) -> anyhow::Result<()> {
+    let mut session = Session::new(&domain, &username, "")?;
     let list = session.list_all()?;
     for name in list {
         let mut mb = Mailbox::new(&mut session, &name)?;

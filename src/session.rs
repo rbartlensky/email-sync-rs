@@ -9,29 +9,37 @@ pub struct Session {
 
 impl Session {
     /// Connects to a testing IMAP server on 127.0.0.1:3993.
-    pub fn new(domain: Option<&str>) -> Result<Self, anyhow::Error> {
-        let session = Session::connect(domain)?;
+    pub fn new(
+        domain: &str,
+        username: &str,
+        password: &str,
+    ) -> Result<Self, anyhow::Error> {
+        let session = Session::connect(domain, username, password)?;
         Ok(Self { session })
     }
 
-    fn connect(domain: Option<&str>) -> Result<ImapSession, anyhow::Error> {
-        let (tls, domain, name) = if let Some(domain) = domain {
+    fn connect(
+        domain: &str,
+        username: &str,
+        password: &str,
+    ) -> Result<ImapSession, anyhow::Error> {
+        let (tls, name) = if domain != "127.0.0.1" {
             let tls = native_tls::TlsConnector::builder()
                 .build()
                 .context("Failed to create TLS connector.")?;
-            (tls, domain, domain)
+            (tls, domain)
         } else {
             let tls = native_tls::TlsConnector::builder()
                 .danger_accept_invalid_certs(true)
                 .danger_accept_invalid_hostnames(true)
                 .build()
                 .unwrap();
-            (tls, "127.0.0.1", "imap.example.com")
+            (tls, "imap.example.com")
         };
         let client = imap::connect((domain, 3993), name, &tls)
             .with_context(|| format!("IMAP: Failed to connect to {}:{}.", domain, 3993))?;
         let session = client
-            .login("inbox@localhost", "")
+            .login(username, password)
             .map_err(|e| e.0)
             .context("Failed to login.")?;
         Ok(session)
