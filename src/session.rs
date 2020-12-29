@@ -9,20 +9,12 @@ pub struct Session {
 
 impl Session {
     /// Connects to a testing IMAP server on 127.0.0.1:3993.
-    pub fn new(
-        domain: &str,
-        username: &str,
-        password: &str,
-    ) -> Result<Self, anyhow::Error> {
+    pub fn new(domain: &str, username: &str, password: &str) -> Result<Self, anyhow::Error> {
         let session = Session::connect(domain, username, password)?;
         Ok(Self { session })
     }
 
-    fn connect(
-        domain: &str,
-        username: &str,
-        password: &str,
-    ) -> Result<ImapSession, anyhow::Error> {
+    fn connect(domain: &str, username: &str, password: &str) -> Result<ImapSession, anyhow::Error> {
         let (tls, name) = if domain != "127.0.0.1" {
             let tls = native_tls::TlsConnector::builder()
                 .build()

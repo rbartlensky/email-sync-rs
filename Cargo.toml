@@ -19,3 +19,4 @@ maildir = "0.4.3"
 
 # for cli
 pico-args = "0.3.4"
+rpassword = "5.0.0"

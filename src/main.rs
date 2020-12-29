@@ -10,13 +10,13 @@ macro_rules! HELP_STR {
 Make a local copy of your email in a maildir directory.
 
 USAGE:
-    {argv0} --domain <DOMAIN> --username <USERNAME>
+    {argv0} <OPTIONS>
 
 OPTIONS:
-    -d, --domain            The domain name of the IMAP server
-    -u, --username          The username to authenticate as
-    -v, --version           Print version info and exit
-    -h, --help              Print help information
+    -d, --domain                  The domain name of the IMAP server
+    -u, --username                The username to authenticate as
+    -v, --version                 Print version info and exit
+    -h, --help                    Print help information
 "#
     };
 }
@@ -37,13 +37,15 @@ fn main() -> anyhow::Result<()> {
     let username: String = args
         .opt_value_from_str(["-u", "--username"])?
         .context("Missing argument `--username`.")?;
+    let password = rpassword::prompt_password_stdout("Password: ")
+        .context("Failed to read password from user.")?;
 
-    sync_email(domain, username)?;
+    sync_email(&domain, &username, &password)?;
     Ok(())
 }
 
-fn sync_email(domain: String, username: String) -> anyhow::Result<()> {
-    let mut session = Session::new(&domain, &username, "")?;
+fn sync_email(domain: &str, username: &str, password: &str) -> anyhow::Result<()> {
+    let mut session = Session::new(domain, username, password)?;
     let list = session.list_all()?;
     for name in list {
         let mut mb = Mailbox::new(&mut session, &name)?;
