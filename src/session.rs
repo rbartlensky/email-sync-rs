@@ -8,13 +8,23 @@ pub struct Session {
 }
 
 impl Session {
-    /// Connects to a testing IMAP server on 127.0.0.1:3993.
-    pub fn new(domain: &str, username: &str, password: &str) -> Result<Self, anyhow::Error> {
-        let session = Session::connect(domain, username, password)?;
+    /// Connects to an IMAP server, and logs in.
+    pub fn new(
+        domain: &str,
+        port: u16,
+        username: &str,
+        password: &str,
+    ) -> Result<Self, anyhow::Error> {
+        let session = Session::connect(domain, port, username, password)?;
         Ok(Self { session })
     }
 
-    fn connect(domain: &str, username: &str, password: &str) -> Result<ImapSession, anyhow::Error> {
+    fn connect(
+        domain: &str,
+        port: u16,
+        username: &str,
+        password: &str,
+    ) -> Result<ImapSession, anyhow::Error> {
         let (tls, name) = if domain != "127.0.0.1" {
             let tls = native_tls::TlsConnector::builder()
                 .build()
@@ -28,8 +38,8 @@ impl Session {
                 .unwrap();
             (tls, "imap.example.com")
         };
-        let client = imap::connect((domain, 3993), name, &tls)
-            .with_context(|| format!("IMAP: Failed to connect to {}:{}.", domain, 3993))?;
+        let client = imap::connect((domain, port), name, &tls)
+            .with_context(|| format!("IMAP: Failed to connect to {}:{}.", domain, port))?;
         let session = client
             .login(username, password)
             .map_err(|e| e.0)

@@ -14,6 +14,7 @@ USAGE:
 
 OPTIONS:
     -d, --domain                  The domain name of the IMAP server
+    -p, --port                    The port of the IMAP server (Default: 993)
     -u, --username                The username to authenticate as
     -v, --version                 Print version info and exit
     -h, --help                    Print help information
@@ -37,15 +38,18 @@ fn main() -> anyhow::Result<()> {
     let username: String = args
         .opt_value_from_str(["-u", "--username"])?
         .context("Missing argument `--username`.")?;
+    let port: u16 = args
+        .opt_value_from_fn(["-p", "--port"], str::parse::<u16>)?
+        .unwrap_or(993);
     let password = rpassword::prompt_password_stdout("Password: ")
         .context("Failed to read password from user.")?;
 
-    sync_email(&domain, &username, &password)?;
+    sync_email(&domain, port, &username, &password)?;
     Ok(())
 }
 
-fn sync_email(domain: &str, username: &str, password: &str) -> anyhow::Result<()> {
-    let mut session = Session::new(domain, username, password)?;
+fn sync_email(domain: &str, port: u16, username: &str, password: &str) -> anyhow::Result<()> {
+    let mut session = Session::new(domain, port, username, password)?;
     let list = session.list_all()?;
     for name in list {
         let mut mb = Mailbox::new(&mut session, &name)?;
