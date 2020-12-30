@@ -15,6 +15,7 @@ use imap::types::{Fetch, ZeroCopy};
 pub struct Mailbox<'s> {
     session: &'s mut Session,
     maildir: maildir::Maildir,
+    message_count: u32,
     uid_validity: u32,
     last_uid: Option<u32>,
 }
@@ -25,8 +26,8 @@ impl<'s> Mailbox<'s> {
     pub fn new(session: &'s mut Session, mailbox: &str) -> anyhow::Result<Self> {
         let maildir = prepare_maildir(mailbox)?;
         let saved_uid = saved_uid(maildir.path())?;
-        let uid_validity = session
-            .select(mailbox)?
+        let select = session.select(mailbox)?;
+        let uid_validity = select
             .uid_validity
             .context("Server doesn't support UIDVALIDITY.")?;
         if let Some(suid) = saved_uid.uid_validity {
@@ -41,6 +42,7 @@ impl<'s> Mailbox<'s> {
         Ok(Mailbox {
             session,
             maildir,
+            message_count: select.exists,
             uid_validity,
             last_uid: saved_uid.last_uid,
         })
@@ -48,11 +50,18 @@ impl<'s> Mailbox<'s> {
 
     /// Returns a list of all messages that cannot be found in the local
     /// maildir.
-    pub fn messages(&mut self) -> anyhow::Result<ZeroCopy<Vec<Fetch>>> {
+    pub fn messages(&mut self) -> anyhow::Result<Option<ZeroCopy<Vec<Fetch>>>> {
+        // no need to do any requests since there is nothing to fetch
+        if self.message_count == 0 {
+            return Ok(None);
+        }
         let uids = self.search_uids()?;
+        if uids.is_empty() {
+            return Ok(None);
+        }
         // fetch their body and envelope
         let res = self.session.inner().uid_fetch(uids, "(RFC822 ENVELOPE)")?;
-        Ok(res)
+        Ok(Some(res))
     }
 
     /// Saves a particular message to the local maildir.

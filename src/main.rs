@@ -49,8 +49,14 @@ fn sync_email(domain: &str, port: u16, username: &str, password: &str) -> anyhow
     let list = session.list_all()?;
     for name in list {
         let mut mb = Mailbox::new(&mut session, &name)?;
-
         let messages = mb.messages()?;
+
+        // no mail to save
+        if messages.is_none() {
+            println!("Mailbox: {} is up-to-date.", name);
+            continue;
+        }
+        let messages = messages.unwrap();
         if messages.is_empty() {
             println!("Mailbox: {} is up-to-date.", name);
             continue;
