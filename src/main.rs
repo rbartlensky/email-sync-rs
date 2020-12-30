@@ -1,16 +1,14 @@
 use anyhow::Context;
 use email_sync::{Mailbox, Session};
 
-const VERSION: &'static str = env!("CARGO_PKG_VERSION");
+const VERSION: &str = env!("CARGO_PKG_VERSION");
 
-macro_rules! HELP_STR {
-    () => {
-        r#"Email sync utility
+const HELP_STR: &str = r#"Email sync utility
 
 Make a local copy of your email in a maildir directory.
 
 USAGE:
-    {argv0} <OPTIONS>
+    email-sync <OPTIONS>
 
 OPTIONS:
     -d, --domain                  The domain name of the IMAP server
@@ -18,18 +16,16 @@ OPTIONS:
     -u, --username                The username to authenticate as
     -v, --version                 Print version info and exit
     -h, --help                    Print help information
-"#
-    };
-}
+"#;
 
 fn main() -> anyhow::Result<()> {
     let mut args = pico_args::Arguments::from_env();
     if args.contains(["-h", "--help"]) {
-        println!(HELP_STR!(), argv0 = std::env::args().nth(0).unwrap());
+        println!("{}", HELP_STR);
         return Ok(());
     }
     if args.contains(["-v", "--version"]) {
-        println!("{} {}", std::env::args().nth(0).unwrap(), VERSION);
+        println!("email-sync {}", VERSION);
         return Ok(());
     }
     let domain: String = args
